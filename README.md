@@ -13,7 +13,11 @@ Sistema inteligente para la predicción de demanda por SKU, visualización de st
 
 ## 📸 Capturas
 
-![Tabla Resumen](./screenshots/tabla-prediccion.png)
+![Imagen de WhatsApp 2025-06-09 a las 18 58 45_086ec59c](https://github.com/user-attachments/assets/2a0ead7a-1d0b-43d6-a7da-2c14d0bf4cd8)
+
+![Imagen de WhatsApp 2025-06-09 a las 18 58 54_36a077d7](https://github.com/user-attachments/assets/a8c237bb-7f26-498b-9cef-c790b00703be)
+
+![Imagen de WhatsApp 2025-06-09 a las 18 59 04_b9275b87](https://github.com/user-attachments/assets/788a064b-c31d-4de6-a644-b4362b7d02a9)
 
 ## 🚀 Cómo correr el proyecto
 
