@@ -1,0 +1,59 @@
+# ---- Node / React / Vite ----
+node_modules/
+dist/
+build/
+.vite/
+*.log
+npm-debug.log*
+yarn-error.log
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ---- Python / FastAPI ----
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pkl
+*.joblib
+*.db
+*.sqlite3
+*.log
+
+# ---- Entornos Virtuales ----
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# ---- Test / Coverage ----
+coverage/
+htmlcov/
+.tox/
+.nox/
+pytest_cache/
+
+# ---- IDE / Editor ----
+.vscode/
+.idea/
+*.swp
+
+# ---- Sistema Operativo ----
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# ---- Otros comunes ----
+*.bak
+*.tmp
+*.old
+
+# ---- Lockfiles (si usas uno u otro) ----
+# package-lock.json  # solo si usas npm
+# yarn.lock          # solo si usas yarn
