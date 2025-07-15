@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { generarCSV } from "../utils/csv";
 import {
   AlertTriangle,
   CheckCircle,
@@ -16,9 +17,9 @@ const TablaPrediccion = ({ data }) => {
   const filteredData = data.filter((item) => {
     const matchesStatus =
       filterStatus === "all" || item.Estado === filterStatus;
-    const matchesSearch = item.Producto.toLowerCase().includes(
-      searchQuery.toLowerCase()
-    );
+    const matchesSearch = (item.Producto || "")
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
     return matchesStatus && matchesSearch;
   });
 
@@ -29,13 +30,20 @@ const TablaPrediccion = ({ data }) => {
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
 
   const handleDownload = () => {
-    const csvContent = [
-      "Producto,Tipo,Ventas_Totales,Demanda_Diaria_Promedio,Stock_Actual,Stock_Recomendado,Dias_Estimados,Diferencia,Porcentaje_Desviacion,Estado",
-      ...data.map(
-        (row) =>
-          `${row.Producto},${row.Tipo},${row.Ventas_Totales},${row.Demanda_Diaria_Promedio},${row.Stock_Actual},${row.Stock_Recomendado},${row.Dias_Estimados},${row.Diferencia},${row.Porcentaje_Desviacion},${row.Estado}`
-      ),
-    ].join("\n");
+    const encabezados = [
+      "Producto",
+      "Tipo",
+      "Ventas_Totales",
+      "Demanda_Diaria_Promedio",
+      "Stock_Actual",
+      "Stock_Recomendado",
+      "Dias_Estimados",
+      "Diferencia",
+      "Porcentaje_Desviacion",
+      "Estado",
+    ];
+
+    const csvContent = generarCSV(data, encabezados);
 
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);

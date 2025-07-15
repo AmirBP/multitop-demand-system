@@ -3,111 +3,101 @@ import numpy as np
 import joblib
 from pathlib import Path
 
-# Ruta relativa del modelo entrenado
-MODEL_PATH = Path("modelo_xgb_sku_global.joblib")
+MODEL_PATH = Path("outputs/modelo_xgb_sku_global.joblib")
 modelo = joblib.load(MODEL_PATH)
 
 def robust_sigma(group: pd.Series) -> float:
-    """
-    Devuelve desviación estándar robusta para las últimas 30 ventas del SKU.
-    """
     last = group.tail(30)
     sigma = last.std(ddof=0)
     if np.isnan(sigma):
         sigma = group.std(ddof=0)
     return 0.0 if np.isnan(sigma) else sigma
 
-def procesar_prediccion(df: pd.DataFrame) -> pd.DataFrame:
-    # Asegurar tipos
-    df["Fechaventa"] = pd.to_datetime(df["Fechaventa"])
+def procesar_prediccion_global(df: pd.DataFrame) -> pd.DataFrame:
+    # Limpieza y tipado
+    df["Fechaventa"] = pd.to_datetime(df["Fechaventa"], errors="coerce", dayfirst=True)
+    df = df.dropna(subset=["Fechaventa"])
     df["CodArticulo"] = df["CodArticulo"].astype("category")
     df["Temporada"] = df["Temporada"].astype("category")
-    df["TipoProducto"] = df["TipoProducto"].astype("category")
+    df["PrecioVenta"] = pd.to_numeric(df["PrecioVenta"], errors="coerce")
+    df["CantidadVendida"] = pd.to_numeric(df["CantidadVendida"], errors="coerce")
+    df["StockMes"] = pd.to_numeric(df["StockMes"], errors="coerce")
+    df["TiempoReposicionDias"] = pd.to_numeric(df["TiempoReposicionDias"], errors="coerce")
 
-    # Variables de calendario
-    df["anio"]       = df["Fechaventa"].dt.year
-    df["mes"]        = df["Fechaventa"].dt.month
+    # Features temporales
+    df["anio"] = df["Fechaventa"].dt.year
+    df["mes"] = df["Fechaventa"].dt.month
     df["dia_semana"] = df["Fechaventa"].dt.dayofweek
-    df["dia_mes"]    = df["Fechaventa"].dt.day
+    df["semana_mes"] = df["Fechaventa"].dt.day // 7 + 1
+    df["es_fin_de_mes"] = df["Fechaventa"].dt.is_month_end.astype(int)
+    df["Precio_log"] = np.log1p(df["PrecioVenta"])
 
-    # Horizonte (Nacional: 90d, Exterior: 180d)
-    df["horizon"] = (
-        df["TipoProducto"]
-          .str.strip()
-          .str.capitalize()
-          .map({"Nacional": 90, "Exterior": 180})
-          .astype(int)
-    )
-
-    # Calcular lags
-    df = df.sort_values(["CodArticulo", "Fechaventa"])
+    # Lags y medias móviles
     grp = df.groupby("CodArticulo", observed=True)
     df["lag_1d"] = grp["CantidadVendida"].shift(1)
     df["lag_7d"] = grp["CantidadVendida"].shift(7)
-    df["ma_7d"]  = grp["CantidadVendida"].shift(1).rolling(7).mean()
-    df = df.dropna(subset=["lag_7d", "ma_7d"]).reset_index(drop=True)
+    df["ma_7d"] = grp["CantidadVendida"].shift(1).rolling(7).mean()
+    df["ma_14d"] = grp["CantidadVendida"].shift(1).rolling(14).mean()
+    df["ma_30d"] = grp["CantidadVendida"].shift(1).rolling(30).mean()
+    df["rolling_std_7d"] = grp["CantidadVendida"].shift(1).rolling(7).std()
 
-    # Seleccionar columnas para predicción
-    X_cols = [
-        "CodArticulo", "Temporada", "TipoProducto",
-        "anio", "mes", "dia_semana", "dia_mes",
-        "lag_1d", "lag_7d", "ma_7d"
-    ]
-    X = df[X_cols]
+    df = df.dropna(subset=["lag_7d", "ma_7d", "ma_14d", "ma_30d", "rolling_std_7d"])
+
+    # Selección de variables
+    X = df[[
+        "CodArticulo", "Temporada",
+        "anio", "mes", "dia_semana", "semana_mes", "es_fin_de_mes",
+        "lag_1d", "lag_7d", "ma_7d", "ma_14d", "ma_30d", "rolling_std_7d",
+        "Promocion", "Precio_log", "DiaFestivo", "EsDomingo", "TiendaCerrada"
+    ]]
+
     df["Pred"] = modelo.predict(X)
 
-    # Agrupaciones por SKU
+    # Agrupación final por producto
+    Z = 1.28  # Nivel de servicio 90%
+
     d_media = df.groupby("CodArticulo", observed=True)["Pred"].mean()
     d_sigma = df.groupby("CodArticulo", observed=True)["CantidadVendida"].apply(robust_sigma)
 
     sku_stats = df.groupby("CodArticulo", observed=True).agg(
-        StockMes=("StockMes", "mean"),
-        TipoProducto=("TipoProducto", "first"),
-        CantidadVendida=("CantidadVendida", "sum"),
-        horizon=("horizon", "first")
+        StockMes=("StockMes", "last"),
+        horizon=("TiempoReposicionDias", "first")
     )
 
-    # Cálculo final
-    Z = 1.28
-    alert = pd.concat([d_media, d_sigma], axis=1, keys=["d_media", "d_sigma"]).join(sku_stats)
+    alerta = pd.concat([d_media, d_sigma], axis=1, keys=["d_media", "d_sigma"]).join(sku_stats)
+    alerta["seguridad"] = Z * alerta["d_sigma"] * np.sqrt(alerta["horizon"])
+    alerta["stock_objetivo"] = (alerta["d_media"] * alerta["horizon"] + alerta["seguridad"]).round()
 
-    alert["seguridad"] = Z * alert["d_sigma"] * np.sqrt(alert["horizon"])
-    alert["stock_objetivo"] = (alert["d_media"] * alert["horizon"] + alert["seguridad"]).round()
+    alerta["dias_cobertura"] = (alerta["StockMes"] / alerta["d_media"]).round(1)
+    alerta["porcentaje_sobrestock"] = ((alerta["StockMes"] - alerta["stock_objetivo"]) / alerta["stock_objetivo"]).round(3)
+    alerta["indice_riesgo_quiebre"] = (alerta["StockMes"] / alerta["seguridad"]).round(2)
 
-    alert["diferencia_vs_objetivo"] = alert["StockMes"] - alert["stock_objetivo"]
-    alert["porcentaje_desviacion"] = (
-        (alert["diferencia_vs_objetivo"] / alert["stock_objetivo"]) * 100
-    ).round(2)
-
-    alert["Estado"] = np.select(
-        [alert["StockMes"] < alert["stock_objetivo"] * 0.9,  # menos de 90% del necesario
-        alert["StockMes"] > 1.1 * alert["stock_objetivo"]],  # más del 110%
+    alerta["Estado"] = np.select(
+        [
+            alerta["StockMes"] < alerta["seguridad"],
+            alerta["StockMes"] > 1.3 * alerta["stock_objetivo"]
+        ],
         ["Quiebre Potencial", "Sobre-stock"],
         default="OK"
     )
 
-    alert["DiasDuracionStock"] = (alert["StockMes"] / alert["d_media"]).round(1)
-    alert["DiasDuracionStock"] = alert["DiasDuracionStock"].replace([np.inf, -np.inf], np.nan).fillna(0)
+    alerta["Accion"] = np.select(
+        [
+            alerta["Estado"] == "Quiebre Potencial",
+            alerta["Estado"] == "Sobre-stock"
+        ],
+        [
+            "Revisar forecast y activar orden de compra",
+            "Evaluar rebaja de precio o promoción"
+        ],
+        default="Monitorear"
+    )
 
-    alert = alert.reset_index()
+    alerta = alerta.reset_index()
 
-    alert = alert.rename(columns={
-        "CodArticulo": "Producto",
-        "TipoProducto": "Tipo",
-        "CantidadVendida": "Ventas_Totales",
-        "StockMes": "Stock_Actual",
-        "d_media": "Demanda_Diaria_Promedio",
-        "stock_objetivo": "Stock_Recomendado",
-        "diferencia_vs_objetivo": "Diferencia",
-        "porcentaje_desviacion": "Porcentaje_Desviacion",
-        "DiasDuracionStock": "Dias_Estimados",
-        "Estado": "Estado"
-    })
-
-    return alert[[
-    "Producto", "Tipo", "Ventas_Totales", "Demanda_Diaria_Promedio",
-    "Stock_Actual", "Stock_Recomendado", "Dias_Estimados",
-    "Diferencia", "Porcentaje_Desviacion", "Estado"
+    return alerta[[
+        "CodArticulo", "d_media", "d_sigma", "StockMes", "horizon",
+        "seguridad", "stock_objetivo", "dias_cobertura",
+        "porcentaje_sobrestock", "indice_riesgo_quiebre",
+        "Estado", "Accion"
     ]]
-
-
