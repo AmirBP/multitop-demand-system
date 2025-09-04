@@ -22,6 +22,9 @@ Sistema inteligente para la predicción de demanda por SKU, visualización de st
 ## 🚀 Cómo correr el proyecto
 
 ```bash
+# Proyecto
+pip install -r requirements.txt
+
 # Frontend
 cd frontend
 npm install
