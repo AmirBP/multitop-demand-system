@@ -2,8 +2,8 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 from io import StringIO
-from train_model import entrenar_modelo
-from model_prediction import procesar_prediccion_global  
+from backend.app.ml.train_model import entrenar_modelo
+from backend.app.ml.model_prediction import procesar_prediccion_global  
 
 app = FastAPI()
 
