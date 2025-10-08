@@ -4,7 +4,13 @@ import joblib
 from pathlib import Path
 
 MODEL_PATH = Path("outputs/modelo_xgb_sku_global.joblib")
-modelo = joblib.load(MODEL_PATH)
+
+def _load_model():
+    if not MODEL_PATH.exists():
+        raise FileNotFoundError(
+            "Modelo no encontrado. Entrena primero con POST /api/model/train."
+        )
+    return joblib.load(MODEL_PATH)
 
 def robust_sigma(group: pd.Series) -> float:
     last = group.tail(30)
@@ -14,6 +20,9 @@ def robust_sigma(group: pd.Series) -> float:
     return 0.0 if np.isnan(sigma) else sigma
 
 def procesar_prediccion_global(df: pd.DataFrame) -> pd.DataFrame:
+    # Carga perezosa del modelo (evita fallo al importar el módulo)
+    modelo = _load_model()
+
     # Limpieza y tipado
     df["Fechaventa"] = pd.to_datetime(df["Fechaventa"], errors="coerce", dayfirst=True)
     df = df.dropna(subset=["Fechaventa"])
@@ -53,12 +62,10 @@ def procesar_prediccion_global(df: pd.DataFrame) -> pd.DataFrame:
 
     df["Pred"] = modelo.predict(X)
 
-    # Agrupación final por producto
-    Z = 1.28  # Nivel de servicio 90%
-
+    # Agregados y alertas
+    Z = 1.28  # 90% servicio
     d_media = df.groupby("CodArticulo", observed=True)["Pred"].mean()
     d_sigma = df.groupby("CodArticulo", observed=True)["CantidadVendida"].apply(robust_sigma)
-
     sku_stats = df.groupby("CodArticulo", observed=True).agg(
         StockMes=("StockMes", "last"),
         horizon=("TiempoReposicionDias", "first")

@@ -1,0 +1,60 @@
+{
+  "jobs": [
+    {
+      "id": "fa6d9456-f2dd-45ce-b6a3-cb3c399fad75",
+      "created_at": "2025-10-08T09:09:36.623648",
+      "filters": {
+        "tienda": null,
+        "campania": null,
+        "categoria": null
+      },
+      "summary": {
+        "OK": 2
+      },
+      "total_items": 2,
+      "mae": null
+    },
+    {
+      "id": "10fc442e-bf29-4877-8d68-e6541ed586e7",
+      "created_at": "2025-10-08T09:29:37.347805",
+      "filters": {
+        "tienda": null,
+        "campania": null,
+        "categoria": null
+      },
+      "summary": {
+        "OK": 2
+      },
+      "total_items": 2,
+      "mae": null
+    },
+    {
+      "id": "7c3d3a18-221a-49da-b806-ce2dd90de16c",
+      "created_at": "2025-10-08T09:43:28.309889",
+      "filters": {
+        "tienda": null,
+        "campania": null,
+        "categoria": null
+      },
+      "summary": {
+        "OK": 2
+      },
+      "total_items": 2,
+      "mae": null
+    },
+    {
+      "id": "0f6ed3eb-cf17-4ee8-9fee-045e84656cef",
+      "created_at": "2025-10-08T09:51:29.038836",
+      "filters": {
+        "tienda": null,
+        "campania": null,
+        "categoria": null
+      },
+      "summary": {
+        "OK": 2
+      },
+      "total_items": 2,
+      "mae": 260170.93391333008
+    }
+  ]
+}

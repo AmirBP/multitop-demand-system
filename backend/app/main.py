@@ -1,36 +1,31 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import pandas as pd
-from io import StringIO
-from backend.app.ml.train_model import entrenar_modelo
-from backend.app.ml.model_prediction import procesar_prediccion_global  
+from app.api.router_health import router as health_router
+from app.api.router_files import router as files_router
+from app.api.router_model import router as model_router
+from app.api.router_predictions import router as predictions_router
+from app.api.router_validation import router as validation_router
+from app.utils.logging_conf import setup_logging
+from app.utils.config import settings
 
-app = FastAPI()
+def create_app() -> FastAPI:
+    setup_logging()
+    app = FastAPI(title="MultiTop Demand System API", version="0.3.0")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.ALLOW_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
-@app.post("/api/train-model")
-async def entrenar(file: UploadFile = File(...)):
-    contenido = await file.read()
-    # df = pd.read_csv(StringIO(contenido.decode("utf-8")))
-    df = pd.read_csv(StringIO(contenido.decode("utf-8")), low_memory=False)
-    resultado = entrenar_modelo(df)
+    app.include_router(health_router, tags=["Health"])
+    app.include_router(files_router, prefix="/api", tags=["Files"])
+    app.include_router(model_router, prefix="/api", tags=["Model"])
+    app.include_router(predictions_router, prefix="/api", tags=["Predictions"])
+    app.include_router(validation_router, prefix="/api", tags=["Validation"])
 
-    return resultado
+    return app
 
-@app.post("/api/prediction")
-async def predecir(file: UploadFile = File(...)):
-    contenido = await file.read()
-    df = pd.read_csv(StringIO(contenido.decode("utf-8")))
-    resultado = procesar_prediccion_global(df)
-
-    resumen = resultado["Estado"].value_counts().to_dict()
-    predicciones = resultado.to_dict(orient="records")
-
-    return {"predictions": predicciones, "summary": resumen}
+app = create_app()
