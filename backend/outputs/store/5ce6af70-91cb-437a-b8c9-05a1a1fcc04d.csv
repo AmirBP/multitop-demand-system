@@ -1,0 +1,7 @@
+CodArticulo,Fechaventa,CantidadVendida,Temporada,PrecioVenta,Promocion,DiaFestivo,EsDomingo,TiendaCerrada,StockMes,TiempoReposicionDias
+SKU001,2024-09-25,12,Verano,49.9,0,0,0,0,120,15
+SKU001,2024-09-26,10,Verano,49.9,0,0,0,0,120,15
+SKU001,2024-09-27,11,Verano,49.9,0,0,0,0,120,15
+SKU002,2024-09-25,5,Verano,59.9,1,0,0,0,80,10
+SKU002,2024-09-26,6,Verano,59.9,0,0,0,0,80,10
+SKU002,2024-09-27,7,Verano,59.9,0,0,0,0,80,10

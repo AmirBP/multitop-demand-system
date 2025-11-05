@@ -2,7 +2,7 @@ import uuid
 import pandas as pd
 from pathlib import Path
 from datetime import datetime
-from app.utils.config import settings
+from backend.app.utils.config import settings
 from app.utils.io_utils import write_json, read_json
 
 MANIFEST = settings.STORE_DIR / "files_manifest.json"

@@ -3,6 +3,7 @@ uvicorn
 pandas
 pytest
 httpx
+numpy
 scikit-learn
 xgboost
 joblib

@@ -7,12 +7,14 @@ from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.metrics import mean_absolute_error
 from xgboost import XGBRegressor
+from app.repositories.config_repo import get_hyperparameters, apply_config_to_model
+from app.schemas import ModelMetrics, FeatureImportance,HyperparametersConfig
 
 OUTPUT_DIR = Path("outputs")
 OUTPUT_DIR.mkdir(exist_ok=True)
 MODEL_PATH = OUTPUT_DIR / "modelo_xgb_sku_global.joblib"
 
-def entrenar_modelo(df: pd.DataFrame) -> dict:
+def entrenar_modelo(df: pd.DataFrame, use_custom_hyperparameters: bool = True) -> dict:
     # Tipado robusto
     binarias = ["Promocion", "DiaFestivo", "EsDomingo", "TiendaCerrada"]
     for col in binarias:
@@ -69,11 +71,13 @@ def entrenar_modelo(df: pd.DataFrame) -> dict:
     X_te["Temporada"] = X_te["Temporada"].astype(str)
 
     # Entrenamiento
-    pipe = Pipeline([
-        ("prep", ColumnTransformer([
-            ("ohe", OneHotEncoder(handle_unknown="ignore"), ["CodArticulo", "Temporada"])
-        ], remainder="passthrough")),
-        ("xgb", XGBRegressor(
+    if use_custom_hyperparameters:
+        cfg_doc = get_hyperparameters()  # dict con keys: id, config, ...
+        cfg = HyperparametersConfig(**cfg_doc["config"])  # <- normaliza a objeto
+        xgb_model = apply_config_to_model(XGBRegressor, cfg)
+    else:
+        # Usar config por defecto
+        xgb_model = XGBRegressor(
             n_estimators=500,
             learning_rate=0.03,
             max_depth=6,
@@ -83,9 +87,15 @@ def entrenar_modelo(df: pd.DataFrame) -> dict:
             reg_alpha=0.5,
             objective="reg:squarederror",
             random_state=42
-        ))
+        )
+    
+    pipe = Pipeline([
+        ("prep", ColumnTransformer([
+            ("ohe", OneHotEncoder(handle_unknown="ignore"), ["CodArticulo", "Temporada"])
+        ], remainder="passthrough")),
+        ("xgb", xgb_model)
     ])
-
+    
     pipe.fit(X_tr, y_tr)
     pred = pipe.predict(X_te)
 
@@ -153,19 +163,68 @@ def entrenar_modelo(df: pd.DataFrame) -> dict:
     plot_data["Fechaventa"] = plot_data["Fechaventa"].dt.strftime("%Y-%m-%d")
 
     # Limpiar NaNs para JSON
-    imp_clean = imp.replace({np.nan: None}).to_dict(orient="records")
+    # imp_clean = imp.replace({np.nan: None}).to_dict(orient="records")
     alert_clean = alert.replace({np.nan: None}).to_dict(orient="records")
 
-    return {
-        "mae": mae,
-        "importancia": imp_clean,
-        "alerta": alert_clean,
-        "plot_data": plot_data.to_dict(orient="records"),
-        "mae": round(mae,2),
-        "mape": round(mape,2),
-        "wape": round(wape,2),
-        "smape": round(smape,2),
-        "bias": round(bias,2),
-        "precision": precision,
-    }
+    # return {
+    #     "mae": mae,
+    #     "importancia": imp_clean,
+    #     "alerta": alert_clean,
+    #     "plot_data": plot_data.to_dict(orient="records"),
+    #     "mae": round(mae,2),
+    #     "mape": round(mape,2),
+    #     "wape": round(wape,2),
+    #     "smape": round(smape,2),
+    #     "bias": round(bias,2),
+    #     "precision": precision,
+    # }
 
+    # Calcular RMSE
+    rmse = float(np.sqrt(np.mean((y_te - pred) ** 2)))
+    
+    # Crear objeto de métricas
+    metrics = ModelMetrics(
+        mae=round(mae, 2),
+        mape=round(mape, 2),
+        wape=round(wape, 2),
+        smape=round(smape, 2),
+        rmse=round(rmse, 2),
+        bias=round(bias, 2),
+        precision=precision,
+        test_size=len(y_te),
+        test_date_range={
+            "start": test["Fechaventa"].min().strftime("%Y-%m-%d"),
+            "end": test["Fechaventa"].max().strftime("%Y-%m-%d")
+        }
+    )
+    
+    # Feature importances estructuradas
+    imp_clean = imp.replace({np.nan: None}).to_dict(orient="records")
+    feature_importance = [
+        FeatureImportance(
+            feature=item["feature"],
+            importance=round(item["gain"], 4),
+            rank=idx + 1
+        )
+        for idx, item in enumerate(imp_clean[:20])  # Top 20
+    ]
+    
+    return {
+        # Nuevas métricas estructuradas
+        "metrics": metrics.dict(),
+        "feature_importance": [f.dict() for f in feature_importance],
+        
+        # Mantener campos existentes para compatibilidad
+        "stock_alerts": alert_clean,
+        "plot_data": plot_data.to_dict(orient="records"),
+        
+        # Backward compatibility
+        "mae": round(mae, 2),
+        "mape": round(mape, 2),
+        "wape": round(wape, 2),
+        "smape": round(smape, 2),
+        "bias": round(bias, 2),
+        "precision": precision,
+        "importancia": imp_clean,
+        "alerta": alert_clean
+    }

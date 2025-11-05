@@ -7,6 +7,7 @@ from app.api.router_predictions import router as predictions_router
 from app.api.router_validation import router as validation_router
 from app.utils.logging_conf import setup_logging
 from app.utils.config import settings
+from app.api.router_hyperparameters import router as hyperparameters_router
 
 def create_app() -> FastAPI:
     setup_logging()
@@ -25,6 +26,8 @@ def create_app() -> FastAPI:
     app.include_router(model_router, prefix="/api", tags=["Model"])
     app.include_router(predictions_router, prefix="/api", tags=["Predictions"])
     app.include_router(validation_router, prefix="/api", tags=["Validation"])
+    app.include_router(hyperparameters_router, prefix="/api", tags=["Hyperparameters"]
+)
 
     return app
 

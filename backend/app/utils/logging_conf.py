@@ -1,6 +1,6 @@
 import logging
 from logging.handlers import RotatingFileHandler
-from app.utils.config import settings
+from backend.app.utils.config import settings
 from pathlib import Path
 
 def setup_logging():
