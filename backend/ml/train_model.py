@@ -89,6 +89,13 @@ def entrenar_modelo(df: pd.DataFrame) -> dict:
     pipe.fit(X_tr, y_tr)
     pred = pipe.predict(X_te)
 
+    mae  = float(mean_absolute_error(y_te, pred))
+    mape = float(100 * np.mean(np.abs((y_te - pred) / np.maximum(1, np.abs(y_te)))))
+    wape = float(100 * np.sum(np.abs(y_te - pred)) / max(np.sum(np.abs(y_te)), 1e-9))
+    smape = float(100 * np.mean(2 * np.abs(y_te - pred) / (np.abs(y_te) + np.abs(pred) + 1e-9)))
+    bias = float(100 * (pred.sum() - y_te.sum()) / max(np.sum(np.abs(y_te)), 1e-9))
+    precision = round(100 - mape, 2)
+
     joblib.dump(pipe, MODEL_PATH)
 
     mae = round(mean_absolute_error(y_te, pred), 2)
@@ -153,6 +160,12 @@ def entrenar_modelo(df: pd.DataFrame) -> dict:
         "mae": mae,
         "importancia": imp_clean,
         "alerta": alert_clean,
-        "plot_data": plot_data.to_dict(orient="records")
+        "plot_data": plot_data.to_dict(orient="records"),
+        "mae": round(mae,2),
+        "mape": round(mape,2),
+        "wape": round(wape,2),
+        "smape": round(smape,2),
+        "bias": round(bias,2),
+        "precision": precision,
     }
 

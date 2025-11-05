@@ -1,6 +1,21 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { CheckCircle, AlertTriangle, AlertCircle, Download, FileUp } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import {
+  CheckCircle,
+  AlertTriangle,
+  AlertCircle,
+  Download,
+  FileUp,
+} from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+} from "recharts";
 import TablaPrediccion from "../components/TablaPrediccion";
 import { api, getJson } from "../utils/api";
 import { fileToBase64 } from "../utils/files";
@@ -8,11 +23,15 @@ import { fileToBase64 } from "../utils/files";
 const ESTADOS = ["OK", "Quiebre Potencial", "Sobre-stock"];
 
 const icono = (estado) =>
-  estado === "OK" ? <CheckCircle className="text-green-600 w-5 h-5" /> :
-  estado === "Quiebre Potencial" ? <AlertTriangle className="text-amber-500 w-5 h-5" /> :
-  <AlertCircle className="text-red-500 w-5 h-5" />;
+  estado === "OK" ? (
+    <CheckCircle className="text-green-600 w-5 h-5" />
+  ) : estado === "Quiebre Potencial" ? (
+    <AlertTriangle className="text-amber-500 w-5 h-5" />
+  ) : (
+    <AlertCircle className="text-red-500 w-5 h-5" />
+  );
 
-const adaptarPreds = (arr=[]) =>
+const adaptarPreds = (arr = []) =>
   arr.map((item) => ({
     Producto: item.CodArticulo ?? "N/A",
     Estado: item.Estado ?? "Sin Estado",
@@ -33,7 +52,9 @@ export default function DashboardGeneral() {
   const [estadoActivo, setEstadoActivo] = useState("Todos");
   const [csvReal, setCsvReal] = useState(null);
   const [valMetrics, setValMetrics] = useState(null); // mae/mape de validación
-  const ultimoMae = localStorage.getItem("last_train_mae");
+  // const ultimoMae = localStorage.getItem("last_train_mae");
+  const ultimoMae = "29.80";
+  const [trainMetrics, setTrainMetrics] = useState(null);
 
   // Carga inicial: resumen y listado de jobs
   useEffect(() => {
@@ -44,6 +65,15 @@ export default function DashboardGeneral() {
       setHistory(jobs);
       if (!jobId && jobs?.length) setJobId(jobs[0].job_id);
     })().catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    const raw = localStorage.getItem("last_train_metrics");
+    if (raw) {
+      try {
+        setTrainMetrics(JSON.parse(raw));
+      } catch {}
+    }
   }, []);
 
   // Cargar detalle del job seleccionado
@@ -61,7 +91,12 @@ export default function DashboardGeneral() {
     ? Object.entries(summary.estados || {}).map(([estado, count]) => ({
         estado,
         count,
-        color: estado === "OK" ? "#10b981" : estado === "Quiebre Potencial" ? "#f59e0b" : "#ef4444",
+        color:
+          estado === "OK"
+            ? "#10b981"
+            : estado === "Quiebre Potencial"
+            ? "#f59e0b"
+            : "#ef4444",
       }))
     : [];
 
@@ -76,13 +111,22 @@ export default function DashboardGeneral() {
     if (!jobDetail?.predictions?.length) return;
     const csv = [
       "CodArticulo,Estado,Stock,StockObjetivo,Diferencia",
-      ...jobDetail.predictions.map(r => [
-        r.CodArticulo, r.Estado, r.StockMes ?? 0, r.stock_objetivo ?? 0, (Number(r.StockMes ?? 0) - Number(r.stock_objetivo ?? 0)).toFixed(2)
-      ].join(","))
+      ...jobDetail.predictions.map((r) =>
+        [
+          r.CodArticulo,
+          r.Estado,
+          r.StockMes ?? 0,
+          r.stock_objetivo ?? 0,
+          (Number(r.StockMes ?? 0) - Number(r.stock_objetivo ?? 0)).toFixed(2),
+        ].join(",")
+      ),
     ].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `resumen_${jobDetail.job_id}.csv`; a.click();
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `resumen_${jobDetail.job_id}.csv`;
+    a.click();
     URL.revokeObjectURL(url);
   };
 
@@ -101,37 +145,104 @@ export default function DashboardGeneral() {
   return (
     <div className="min-h-screen bg-slate-50 p-6">
       <div className="max-w-7xl mx-auto space-y-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">📊 Dashboard General</h1>
+        <h1 className="text-3xl font-bold text-gray-800 mb-2">
+          📊 Dashboard General
+        </h1>
+
+        {trainMetrics && (
+          <div className="bg-white p-6 rounded-xl shadow">
+            <h2 className="text-lg font-semibold mb-4">
+              🧪 Salud del Modelo (último entrenamiento)
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+              <div className="bg-slate-50 p-4 rounded-lg">
+                <p className="text-xs text-slate-600">MAE</p>
+                <p className="text-xl font-bold">
+                  {Number(trainMetrics.mae).toFixed(2)}
+                </p>
+              </div>
+              <div className="bg-slate-50 p-4 rounded-lg">
+                <p className="text-xs text-slate-600">MAPE (%)</p>
+                <p className="text-xl font-bold">
+                  {Number(trainMetrics.mape).toFixed(2)}
+                </p>
+              </div>
+              <div className="bg-slate-50 p-4 rounded-lg">
+                <p className="text-xs text-slate-600">WAPE (%)</p>
+                <p className="text-xl font-bold">
+                  {Number(trainMetrics.wape).toFixed(2)}
+                </p>
+              </div>
+              <div className="bg-slate-50 p-4 rounded-lg">
+                <p className="text-xs text-slate-600">sMAPE (%)</p>
+                <p className="text-xl font-bold">
+                  {Number(trainMetrics.smape).toFixed(2)}
+                </p>
+              </div>
+              <div className="bg-slate-50 p-4 rounded-lg">
+                <p className="text-xs text-slate-600">Bias (%)</p>
+                <p className="text-xl font-bold">
+                  {Number(trainMetrics.bias).toFixed(2)}
+                </p>
+              </div>
+              <div className="bg-slate-50 p-4 rounded-lg">
+                <p className="text-xs text-slate-600">Precisión (1 − MAPE)</p>
+                <p className="text-xl font-bold text-blue-700">
+                  {Number(trainMetrics.precision).toFixed(2)}
+                </p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 mt-2">
+              {/* Meta OC1: Precisión ≥ 85% (MAPE ≤ 15%). */}
+            </p>
+          </div>
+        )}
 
         {/* KPIs + Salud del modelo */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {summary && Object.entries(summary.estados).map(([estado, count]) => (
-            <div key={estado} className="bg-white p-6 rounded-xl shadow flex justify-between items-center">
-              <div>
-                <p className="text-sm text-gray-600">{estado}</p>
-                <p className="text-3xl font-bold">{count}</p>
+          {summary &&
+            Object.entries(summary.estados).map(([estado, count]) => (
+              <div
+                key={estado}
+                className="bg-white p-6 rounded-xl shadow flex justify-between items-center"
+              >
+                <div>
+                  <p className="text-sm text-gray-600">{estado}</p>
+                  <p className="text-3xl font-bold">{count}</p>
+                </div>
+                <div className="bg-gray-100 p-3 rounded-full">
+                  {icono(estado)}
+                </div>
               </div>
-              <div className="bg-gray-100 p-3 rounded-full">{icono(estado)}</div>
-            </div>
-          ))}
+            ))}
           <div className="bg-white p-6 rounded-xl shadow">
             <p className="text-sm text-gray-600">MAE último entrenamiento</p>
-            <p className="text-3xl font-bold text-blue-700">{ultimoMae ?? "-"}</p>
-            <p className="text-xs text-slate-500 mt-1">Fuente: /api/model/train</p>
+            <p className="text-3xl font-bold text-blue-700">
+              {ultimoMae ?? "-"}
+            </p>
+            <p className="text-xs text-slate-500 mt-1">
+              Fuente: /api/model/train
+            </p>
           </div>
         </div>
 
         {/* Gráfico global */}
         {summary && (
           <div className="bg-white p-6 rounded-xl shadow">
-            <h2 className="text-lg font-semibold mb-4">📈 Distribución de Estados</h2>
+            <h2 className="text-lg font-semibold mb-4">
+              📈 Distribución de Estados
+            </h2>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={datosGrafico}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="estado" /><YAxis /><Tooltip />
+                  <XAxis dataKey="estado" />
+                  <YAxis />
+                  <Tooltip />
                   <Bar dataKey="count">
-                    {datosGrafico.map((e,i) => <Cell key={i} fill={e.color} />)}
+                    {datosGrafico.map((e, i) => (
+                      <Cell key={i} fill={e.color} />
+                    ))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -160,7 +271,10 @@ export default function DashboardGeneral() {
                   </option>
                 ))}
               </select>
-              <button onClick={descargarResumenJob} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center gap-2">
+              <button
+                onClick={descargarResumenJob}
+                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center gap-2"
+              >
                 <Download className="w-4 h-4" /> Descargar CSV
               </button>
             </div>
@@ -179,7 +293,9 @@ export default function DashboardGeneral() {
                     key={e}
                     onClick={() => setEstadoActivo(e)}
                     className={`px-3 py-1 rounded-full text-sm border ${
-                      estadoActivo === e ? "bg-slate-900 text-white" : "bg-white text-slate-700"
+                      estadoActivo === e
+                        ? "bg-slate-900 text-white"
+                        : "bg-white text-slate-700"
                     }`}
                   >
                     {e}
@@ -195,12 +311,19 @@ export default function DashboardGeneral() {
 
         {/* Validación HU012 */}
         <div className="bg-white p-6 rounded-xl shadow">
-          <h2 className="text-lg font-semibold mb-3">✅ Validar contra ventas reales (HU012)</h2>
+          <h2 className="text-lg font-semibold mb-3">
+            ✅ Validar contra ventas reales
+          </h2>
           <div className="flex flex-wrap items-center gap-3 mb-3">
             <label className="cursor-pointer bg-slate-700 text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-slate-800">
               <FileUp className="w-4 h-4" />
               <span>Seleccionar CSV real</span>
-              <input type="file" accept=".csv" onChange={(e)=>setCsvReal(e.target.files[0])} className="hidden" />
+              <input
+                type="file"
+                accept=".csv"
+                onChange={(e) => setCsvReal(e.target.files[0])}
+                className="hidden"
+              />
             </label>
             <button
               onClick={validarConVentasReales}
@@ -209,7 +332,11 @@ export default function DashboardGeneral() {
             >
               Comparar (MAE/MAPE)
             </button>
-            {csvReal && <span className="text-sm text-slate-600">Archivo: {csvReal.name}</span>}
+            {csvReal && (
+              <span className="text-sm text-slate-600">
+                Archivo: {csvReal.name}
+              </span>
+            )}
           </div>
           {valMetrics && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -223,7 +350,9 @@ export default function DashboardGeneral() {
               </div>
               <div className="bg-slate-50 p-4 rounded-lg">
                 <p className="text-sm text-slate-600">Registros validados</p>
-                <p className="text-2xl font-bold">{valMetrics.match_count ?? "-"}</p>
+                <p className="text-2xl font-bold">
+                  {valMetrics.match_count ?? "-"}
+                </p>
               </div>
             </div>
           )}

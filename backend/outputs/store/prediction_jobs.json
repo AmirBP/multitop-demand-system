@@ -55,6 +55,48 @@
       },
       "total_items": 2,
       "mae": 260170.93391333008
+    },
+    {
+      "id": "2effc1c3-894f-4e46-ae4a-22c7ad1b7b27",
+      "created_at": "2025-10-08T10:38:46.077342",
+      "filters": {
+        "tienda": null,
+        "campania": null,
+        "categoria": null
+      },
+      "summary": {
+        "OK": 2
+      },
+      "total_items": 2,
+      "mae": 996346.3559133301
+    },
+    {
+      "id": "740cdfc6-e9f8-4805-90da-04a54311df22",
+      "created_at": "2025-10-08T13:11:52.508012",
+      "filters": {
+        "tienda": null,
+        "campania": null,
+        "categoria": null
+      },
+      "summary": {
+        "OK": 2
+      },
+      "total_items": 2,
+      "mae": null
+    },
+    {
+      "id": "399a4594-96a6-42af-8cd1-bc1cbb398992",
+      "created_at": "2025-10-08T14:39:32.402327",
+      "filters": {
+        "tienda": null,
+        "campania": null,
+        "categoria": null
+      },
+      "summary": {
+        "OK": 2
+      },
+      "total_items": 2,
+      "mae": null
     }
   ]
 }

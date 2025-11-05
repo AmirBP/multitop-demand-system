@@ -11,6 +11,11 @@ class FileUploadResponse(BaseModel):
 # Train
 class TrainResponse(BaseModel):
     mae: float
+    mape: float
+    wape: float
+    smape: float
+    bias: float
+    precision: float
     importancia: List[Dict[str, Any]]
     alerta: List[Dict[str, Any]]
     plot_data: List[Dict[str, Any]]
