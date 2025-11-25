@@ -3,7 +3,7 @@ import PrediccionProductos from "./pages/PrediccionProductos";
 import EntrenamientoModelo from "./pages/EntrenamientoModelo";
 import DashboardGeneral from "./pages/DashboardGeneral";
 import Header from "./components/Header";
-
+import DemoCompleto from "./pages/DemoCompleto";
 function App() {
   return (
     <Router>
@@ -12,6 +12,7 @@ function App() {
         <Route path="/" element={<PrediccionProductos />} />
         <Route path="/entrenamiento" element={<EntrenamientoModelo />} />
         <Route path="/dashboard" element={<DashboardGeneral />} />
+        <Route path="/demo" element={<DemoCompleto />} /> 
       </Routes>
     </Router>
   );

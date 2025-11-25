@@ -21,6 +21,7 @@ const Header = () => {
         <NavLink to="/">📈 Predicción</NavLink>
         <NavLink to="/entrenamiento">🧠 Entrenamiento</NavLink>
         <NavLink to="/dashboard">📊 Dashboard</NavLink>
+        <NavLink to="/demo">📊 Nuevo Dashboard</NavLink>
       </nav>
     </header>
   );
